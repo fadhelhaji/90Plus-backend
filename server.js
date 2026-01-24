@@ -29,7 +29,7 @@ mongoose.connection.on('error', (error) => {
 
 
 // MIDDLEWARE
-const verifyToken = require('./middleware/verifyToken');
+const verifyToken = require('./middlewares/verifyToken');
 
 app.use(cors());
 app.use(morgan('dev'));
