@@ -23,8 +23,8 @@ mongoose.connection.on('connected', () => {
   console.log('Connected to DB');
 });
 
-mongoose.connection.on('error', (err) => {
-  console.error('MongoDB connection error:', err);
+mongoose.connection.on('error', (error) => {
+  console.error('MongoDB connection error:', error);
 });
 
 
