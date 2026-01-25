@@ -3,7 +3,12 @@ const { Schema, model } = mongoose;
 
 const clubSchema = new Schema({
   club_name: { type: String, required: true },
-  coach_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  coach_id: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+    unique: true,
+  },
   players: [
     {
       player_id: { type: Schema.Types.ObjectId, ref: "User", required: true },

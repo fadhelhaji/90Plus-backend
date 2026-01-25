@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 // we need mongoose schema
 const userSchema = mongoose.Schema({
@@ -6,19 +6,24 @@ const userSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+  role: {
+    type: String,
+    enum: ["Coach", "Player"],
+    default: "Player",
+    required: true,
+  },
   password: {
     type: String,
     required: true,
   },
-})
+});
 
-
-userSchema.set('toJSON', {
+userSchema.set("toJSON", {
   transform: (document, returnedObject) => {
     delete returnedObject.password;
   },
 });
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 module.exports = User;
