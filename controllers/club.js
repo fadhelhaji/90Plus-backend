@@ -55,7 +55,7 @@ router.post("/:id/teams/create", async (req, res) => {
     const club = await Club.findById(req.params.id);
     if (!club) return res.status(404).json({ error: "Club not found" });
 
-    if (req.user._id !== club.coach_id)
+    if (req.user._id.toString() !== club.coach_id.toString())
       return res.status(403).json({ error: "Not allowed" });
 
     const { team_name, formation, players } = req.body;
