@@ -41,12 +41,20 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/:id", async (req, res) => {
-  const { id } = req.params;
   try {
-    const clubInfo = await Club.findById(id).populate("coach_id", "username");
-    res.status(200).json(clubInfo);
+    const club = await Club.findById(req.params.id).populate(
+      "coach_id",
+      "username",
+    );
+
+    const teams = await Team.find({ club_id: req.params.id });
+
+    res.status(200).json({
+      club,
+      teams,
+    });
   } catch (error) {
-    res.status(500).json({ error: "Could not fetch Club" });
+    res.status(500).json({ error: "Could not fetch club" });
   }
 });
 
@@ -71,6 +79,25 @@ router.post("/:id/teams/create", async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: "Failed to create team" });
+  }
+});
+
+router.get("/:clubId/teams/:teamId", async (req, res) => {
+  const { clubId, teamId } = req.params;
+
+  try {
+    const team = await Team.findOne({
+      _id: teamId,
+      club_id: clubId,
+    }).populate("players.player_id", "username");
+
+    if (!team) {
+      return res.status(404).json({ error: "Team not found" });
+    }
+
+    res.status(200).json(team);
+  } catch (error) {
+    res.status(500).json({ error: "Could not fetch team" });
   }
 });
 
