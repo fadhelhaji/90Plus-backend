@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Club = require("../models/club");
+const Team = require("../models/team");
 
 router.post("/create", async (req, res) => {
   try {
@@ -48,4 +49,29 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ error: "Could not fetch Club" });
   }
 });
+
+router.post("/:id/teams/create", async (req, res) => {
+  try {
+    const club = await Club.findById(req.params.id);
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    if (req.user._id !== club.coach_id)
+      return res.status(403).json({ error: "Not allowed" });
+
+    const { team_name, formation, players } = req.body;
+
+    const team = await Team.create({
+      team_name,
+      formation,
+      players,
+      club_id: club._id,
+    });
+
+    res.status(201).json(team);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Failed to create team" });
+  }
+});
+
 module.exports = router;
