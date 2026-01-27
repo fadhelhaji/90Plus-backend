@@ -25,6 +25,8 @@ router.post("/create", async (req, res) => {
       club_name: req.body.club_name,
       coach_id,
     });
+    await User.findByIdAndUpdate(coach_id, { club_id: createClub._id });
+
     res.status(201).json(createClub);
   } catch (error) {
     console.error(error);
@@ -87,7 +89,6 @@ router.get("/:clubId/teams/:teamId", async (req, res) => {
   const { clubId, teamId } = req.params;
 
   try {
-    // 1. Get team
     const team = await Team.findOne({
       _id: teamId,
       club_id: clubId,
@@ -97,10 +98,7 @@ router.get("/:clubId/teams/:teamId", async (req, res) => {
       return res.status(404).json({ error: "Team not found" });
     }
 
-    // 2. Get all players
     const players = await User.find({ role: "Player" }).select("username");
-
-    // 3. Send both
     res.status(200).json({
       team,
       players,
@@ -110,48 +108,68 @@ router.get("/:clubId/teams/:teamId", async (req, res) => {
   }
 });
 
-// POST /club/:clubId/team/:teamId/players
-router.post("/:clubId/team/:teamId", async (req, res) => {
-  const { clubId, teamId } = req.params;
-  const { playerId, position } = req.body;
+router.post("/:clubId/invite/:playerId", async (req, res) => {
+  const { clubId, playerId } = req.params;
+  const user = req.user;
 
   try {
-    // 1. find team and ensure it belongs to the club
-    const team = await Team.findOne({
-      _id: teamId,
-      club_id: clubId,
-    });
-
-    if (!team) {
-      return res.status(404).json({ error: "Team not found in this club" });
+    if (user.role !== "Coach") {
+      return res.status(403).json({ error: "Only coaches can invite players" });
     }
 
-    // 2. prevent duplicates
-    const alreadyAdded = team.players.some(
+    const club = await Club.findById(clubId);
+    const player = await User.findById(playerId);
+
+    if (!club || !player) {
+      return res.status(404).json({ error: "Club or Player not found" });
+    }
+    if (player.club_id) {
+      return res.status(400).json({ error: "Player already has a club" });
+    }
+    const alreadyInvited = club.players.some(
       (p) => p.player_id.toString() === playerId,
     );
-
-    if (alreadyAdded) {
-      return res.status(400).json({ error: "Player already in team" });
+    if (alreadyInvited) {
+      return res.status(400).json({ error: "Player already invited" });
     }
-
-    // 3. add player to team
-    team.players.push({
+    club.players.push({
       player_id: playerId,
-      position: position || null,
+      status: "invited",
     });
-
-    await team.save();
-
-    // 4. optionally attach player to club
-    await User.findByIdAndUpdate(playerId, {
-      club_id: clubId,
-    });
-
-    res.status(200).json(team);
+    await club.save();
+    res.status(200).json({ message: "Invitation sent" });
   } catch (error) {
-    res.status(500).json({ error: "Could not add player to team" });
+    res.status(500).json({ error: "Could not invite player" });
   }
+});
+
+router.post("/:clubId/accept", async (req, res) => {
+  const user = req.user;
+  const { clubId } = req.params;
+  const club = await Club.findById(clubId);
+
+  const playerEntry = club.players.find(
+    (p) => p.player_id.toString() === user._id.toString(),
+  );
+  if (!playerEntry) {
+    return res.status(404).json({ error: "Invitation not found" });
+  }
+  playerEntry.status = "approved";
+  await club.save();
+  user.club_id = clubId;
+  await user.save();
+  res.status(200).json({ message: "Joined club successfully" });
+});
+
+router.post("/:clubId/reject", async (req, res) => {
+  const user = req.user;
+  const { clubId } = req.params;
+
+  await Club.findByIdAndUpdate(clubId, {
+    $pull: { players: { player_id: user._id } },
+  });
+
+  res.status(200).json({ message: "Invitation rejected" });
 });
 
 module.exports = router;

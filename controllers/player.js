@@ -4,7 +4,6 @@ const User = require("../models/user");
 
 router.get("/market", async (req, res) => {
   try {
-    // Find all users with role 'Player'
     const players = await User.find({ role: "Player" }).select(
       "username email club_id",
     );
@@ -32,4 +31,19 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+router.get("/invites/:playerId", async (req, res) => {
+  const { playerId } = req.params;
+  try {
+    const player = await User.findById(playerId).populate(
+      "invitations.club_id",
+      "club_name",
+    );
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    res.status(200).json(player.invitations);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Could not fetch invitations" });
+  }
+});
 module.exports = router;
