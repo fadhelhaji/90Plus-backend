@@ -16,6 +16,12 @@ const userSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+
+  club_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Club",
+    default: null,
+  },
 });
 
 userSchema.set("toJSON", {
