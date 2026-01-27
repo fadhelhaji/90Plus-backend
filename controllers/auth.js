@@ -1,17 +1,17 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const User = require('../models/user');
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const User = require("../models/user");
 
-router.post('/sign-up', async (req, res) => {
+router.post("/sign-up", async (req, res) => {
   try {
     const { username, password } = req.body;
     // make sure the user does not exist
     const userInDatabase = await User.findOne({ username });
 
     if (userInDatabase) {
-      return res.status(409).json({ err: 'Invalid username or password' });
+      return res.status(409).json({ err: "Invalid username or password" });
     }
 
     // take the password and encrypt in some way.
@@ -25,7 +25,7 @@ router.post('/sign-up', async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       _id: user._id,
-      role: user.role
+      role: user.role,
     };
 
     const token = jwt.sign({ payload }, process.env.JWT_SECRET);
@@ -36,7 +36,7 @@ router.post('/sign-up', async (req, res) => {
   }
 });
 
-router.post('/sign-in', async (req, res) => {
+router.post("/sign-in", async (req, res) => {
   try {
     // try to find the user inthe db
     const { username, password } = req.body;
@@ -46,14 +46,17 @@ router.post('/sign-in', async (req, res) => {
 
     // if the user does not exist, redirect to sign up with msg
     if (!userInDatabase) {
-      return res.status(401).json({ err: 'Invalid Credentials' });
+      return res.status(401).json({ err: "Invalid Credentials" });
     }
 
-    const isValidPassword = bcrypt.compareSync(password, userInDatabase.password);
+    const isValidPassword = bcrypt.compareSync(
+      password,
+      userInDatabase.password,
+    );
 
     // if the pw doesnt match, throw an error
     if (!isValidPassword) {
-      return res.status(401).json({ err: 'Invalid Credentials' });
+      return res.status(401).json({ err: "Invalid Credentials" });
     }
 
     const payload = {
@@ -61,7 +64,7 @@ router.post('/sign-in', async (req, res) => {
       firstName: userInDatabase.firstName,
       lastName: userInDatabase.lastName,
       _id: userInDatabase._id,
-      role: userInDatabase.role
+      role: userInDatabase.role,
     };
 
     const token = jwt.sign({ payload }, process.env.JWT_SECRET);

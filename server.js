@@ -32,9 +32,11 @@ app.use(express.json());
 // CONTROLLERS / ROUTES
 const authCtrl = require("./controllers/auth");
 const clubCtrl = require("./controllers/club");
+const playerCtrl = require("./controllers/player");
 
 // Public routes
 app.use("/auth", authCtrl);
+app.use("/players", playerCtrl);
 
 // Protected routes
 app.use(verifyToken);
