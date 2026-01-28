@@ -45,10 +45,9 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const club = await Club.findById(req.params.id).populate(
-      "coach_id",
-      "username",
-    );
+    const club = await Club.findById(req.params.id)
+      .populate("coach_id", "username")
+      .populate("players.player_id", "username");
 
     const teams = await Team.find({ club_id: req.params.id });
 
@@ -98,13 +97,20 @@ router.get("/:clubId/teams/:teamId", async (req, res) => {
       return res.status(404).json({ error: "Team not found" });
     }
 
-    const players = await User.find({ role: "Player" }).select("username");
+    const club = await Club.findById(clubId).populate(
+      "players.player_id",
+      "username",
+    );
+
+    const clubPlayers = club.players.filter((p) => p.status === "approved");
+
     res.status(200).json({
       team,
-      players,
+      clubPlayers,
     });
   } catch (error) {
-    res.status(500).json({ error: "Could not fetch team" });
+    console.log(error);
+    res.status(500).json({ error: "Could not fetch team details" });
   }
 });
 
