@@ -3,6 +3,8 @@ const router = express.Router();
 const Club = require("../models/club");
 const Team = require("../models/team");
 const User = require("../models/user");
+const Game = require("../models/game");
+
 
 router.post("/create", async (req, res) => {
   try {
@@ -87,21 +89,20 @@ router.get("/:clubId/teams/:teamId", async (req, res) => {
   const { clubId, teamId } = req.params;
 
   try {
-    const team = await Team.findOne({
-      _id: teamId,
-      club_id: clubId,
-    }).populate("players.player_id", "username");
+    const team = await Team.findById(teamId).populate("players.player_id", "username");
 
     if (!team) {
-      return res.status(404).json({ error: "Team not found" });
+      return res.status(404).json({ error: "Team not found by teamId" });
     }
 
-    const club = await Club.findById(clubId).populate(
-      "players.player_id",
-      "username",
-    );
+    if (team.club_id.toString() !== clubId.toString()) {
+      return res.status(404).json({ error: "Team does not belong to this club" });
+    }
 
-    const clubPlayers = club.players.filter((p) => p.status === "approved");
+    const club = await Club.findById(clubId)
+      .populate("players.player_id", "username");
+
+    const clubPlayers = (club.players || []).filter((p) => p.status === "approved");
 
     res.status(200).json({
       team,
@@ -109,9 +110,10 @@ router.get("/:clubId/teams/:teamId", async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ error: "Could not fetch team details" });
+    res.status(500).json({ error: "Could not fetch team" });
   }
 });
+
 
 // UPDATE team formation
 router.put("/:clubId/teams/:teamId/formation", async (req, res) => {
@@ -142,7 +144,8 @@ router.put("/:clubId/teams/:teamId/formation", async (req, res) => {
 router.post("/:clubId/teams/:teamId/add-player", async (req, res) => {
   try {
     const { clubId, teamId } = req.params;
-    const { playerId } = req.body;
+    const { playerId, position } = req.body;
+
     const club = await Club.findById(clubId);
     if (!club) return res.status(404).json({ error: "Club not found" });
 
@@ -160,6 +163,7 @@ router.post("/:clubId/teams/:teamId/add-player", async (req, res) => {
 
     const team = await Team.findById(teamId);
     if (!team) return res.status(404).json({ error: "Team not found" });
+
     const alreadyInTeam = team.players.some(
       (p) => p.player_id.toString() === playerId,
     );
@@ -167,7 +171,12 @@ router.post("/:clubId/teams/:teamId/add-player", async (req, res) => {
     if (alreadyInTeam) {
       return res.status(400).json({ error: "Player already in team" });
     }
-    team.players.push({ player_id: playerId });
+
+    team.players.push({
+      player_id: playerId,
+      position: position || null,
+    });
+
     await team.save();
 
     const updatedTeam = await Team.findById(team._id).populate(
@@ -181,6 +190,7 @@ router.post("/:clubId/teams/:teamId/add-player", async (req, res) => {
     res.status(500).json({ error: "Could not add player to team" });
   }
 });
+
 
 router.post("/:clubId/teams/:teamId/remove-player", async (req, res) => {
   const { clubId, teamId } = req.params;
@@ -263,5 +273,62 @@ router.post("/:clubId/reject", async (req, res) => {
 
   res.status(200).json({ message: "Invitation rejected" });
 });
+
+router.post("/:clubId/games/create", async (req, res) => {
+  try {
+    const { clubId } = req.params;
+    const { team_a_id, team_b_id, match_date, location } = req.body;
+
+    const club = await Club.findById(clubId);
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    if (req.user._id.toString() !== club.coach_id.toString()) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    if (!team_a_id || !team_b_id || !match_date || !location) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (team_a_id === team_b_id) {
+      return res.status(400).json({ error: "Teams must be different" });
+    }
+
+    const [teamA, teamB] = await Promise.all([
+      Team.findById(team_a_id),
+      Team.findById(team_b_id),
+    ]);
+
+    if (!teamA || !teamB) {
+      return res.status(404).json({ error: "Team not found" });
+    }
+
+    if (teamA.club_id.toString() !== clubId.toString()) {
+      return res.status(400).json({ error: "Team A not in this club" });
+    }
+
+    if (teamB.club_id.toString() !== clubId.toString()) {
+      return res.status(400).json({ error: "Team B not in this club" });
+    }
+
+    const game = await Game.create({
+      club_id: clubId,
+      team_a_id,
+      team_b_id,
+      match_date,
+      location,
+    });
+
+    const populated = await Game.findById(game._id)
+      .populate("team_a_id", "team_name formation")
+      .populate("team_b_id", "team_name formation");
+
+    return res.status(201).json(populated);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Could not create game" });
+  }
+});
+
 
 module.exports = router;
