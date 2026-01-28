@@ -4,9 +4,10 @@ const User = require("../models/user");
 
 router.get("/market", async (req, res) => {
   try {
-    const players = await User.find({ role: "Player" }).select(
-      "username email club_id",
-    );
+    const players = await User.find({
+      role: "Player",
+      $or: [{ club_id: null }, { club_id: { $exists: false } }],
+    }).select("username email club_id");
 
     res.status(200).json(players);
   } catch (error) {

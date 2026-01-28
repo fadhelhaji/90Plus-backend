@@ -7,7 +7,6 @@ const Game = require("../models/game");
 const upload = require("../middlewares/uploadMemory");
 const cloudinary = require("../config/cloudinary");
 
-
 router.post("/create", async (req, res) => {
   try {
     const coach_id = req.user._id;
@@ -37,7 +36,9 @@ router.post("/create", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const clubs = await Club.find();
+    const clubs = await Club.find()
+      .populate("coach_id", "username")
+      .populate("players.player_id", "username");
     res.status(200).json(clubs);
   } catch (error) {
     res.status(500).json({ error: "Could not fetch Club" });
@@ -91,20 +92,29 @@ router.get("/:clubId/teams/:teamId", async (req, res) => {
   const { clubId, teamId } = req.params;
 
   try {
-    const team = await Team.findById(teamId).populate("players.player_id", "username");
+    const team = await Team.findById(teamId).populate(
+      "players.player_id",
+      "username",
+    );
 
     if (!team) {
       return res.status(404).json({ error: "Team not found by teamId" });
     }
 
     if (team.club_id.toString() !== clubId.toString()) {
-      return res.status(404).json({ error: "Team does not belong to this club" });
+      return res
+        .status(404)
+        .json({ error: "Team does not belong to this club" });
     }
 
-    const club = await Club.findById(clubId)
-      .populate("players.player_id", "username");
+    const club = await Club.findById(clubId).populate(
+      "players.player_id",
+      "username",
+    );
 
-    const clubPlayers = (club.players || []).filter((p) => p.status === "approved");
+    const clubPlayers = (club.players || []).filter(
+      (p) => p.status === "approved",
+    );
 
     res.status(200).json({
       team,
@@ -116,8 +126,6 @@ router.get("/:clubId/teams/:teamId", async (req, res) => {
   }
 });
 
-
-// UPDATE team formation
 router.put("/:clubId/teams/:teamId/formation", async (req, res) => {
   const { clubId, teamId } = req.params;
   const { formation } = req.body;
@@ -193,7 +201,6 @@ router.post("/:clubId/teams/:teamId/add-player", async (req, res) => {
   }
 });
 
-
 router.post("/:clubId/teams/:teamId/remove-player", async (req, res) => {
   const { clubId, teamId } = req.params;
   const { playerId } = req.body;
@@ -250,16 +257,25 @@ router.post("/:clubId/invite/:playerId", async (req, res) => {
 router.post("/:clubId/accept", async (req, res) => {
   const user = req.user;
   const { clubId } = req.params;
+
   const club = await Club.findById(clubId);
+  if (!club) return res.status(404).json({ error: "Club not found" });
+
   const playerEntry = club.players.find(
     (p) => p.player_id.toString() === user._id.toString(),
   );
+
   if (!playerEntry) {
     return res.status(404).json({ error: "Invitation not found" });
   }
+
   playerEntry.status = "approved";
   await club.save();
-  await User.findByIdAndUpdate(user._id, { invitations: [] });
+
+  await User.findByIdAndUpdate(user._id, {
+    invitations: [],
+    club_id: clubId,
+  });
 
   res.status(200).json({ message: "Joined club successfully" });
 });
@@ -351,7 +367,6 @@ router.get("/:clubId/games", async (req, res) => {
   }
 });
 
-
 router.get("/:clubId/games/:gameId", async (req, res) => {
   try {
     const { clubId, gameId } = req.params;
@@ -393,7 +408,7 @@ router.put("/:clubId/games/:gameId/score", async (req, res) => {
     const game = await Game.findOneAndUpdate(
       { _id: gameId, club_id: clubId },
       { score_team_a, score_team_b },
-      { new: true }
+      { new: true },
     );
 
     if (!game) return res.status(404).json({ error: "Match not found" });
@@ -421,7 +436,7 @@ router.put("/:clubId/games/:gameId/rate/:playerId", async (req, res) => {
     if (!game) return res.status(404).json({ error: "Match not found" });
 
     const idx = game.player_stats.findIndex(
-      (ps) => ps.player_id.toString() === playerId
+      (ps) => ps.player_id.toString() === playerId,
     );
 
     if (idx >= 0) {
@@ -435,7 +450,7 @@ router.put("/:clubId/games/:gameId/rate/:playerId", async (req, res) => {
 
     const populated = await Game.findById(game._id).populate(
       "player_stats.player_id",
-      "username"
+      "username",
     );
 
     res.status(200).json(populated);
@@ -474,10 +489,10 @@ router.post(
       });
 
       game.photos.push({
-  url: uploaded.secure_url,
-  public_id: uploaded.public_id,
-  tagged_player_ids: [],
-});
+        url: uploaded.secure_url,
+        public_id: uploaded.public_id,
+        tagged_player_ids: [],
+      });
 
       await game.save();
 
@@ -490,7 +505,7 @@ router.post(
       console.log(error);
       res.status(500).json({ error: "Could not upload photo" });
     }
-  }
+  },
 );
 
 router.delete("/:clubId/games/:gameId/photos/:photoId", async (req, res) => {
@@ -568,11 +583,5 @@ router.put("/:clubId/games/:gameId/photos/:photoId/tags", async (req, res) => {
     res.status(500).json({ error: "Could not update photo tags" });
   }
 });
-
-
-
-
-
-
 
 module.exports = router;
