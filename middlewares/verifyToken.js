@@ -1,18 +1,16 @@
 // This is the same as isSignedIn
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 const verifyToken = (req, res, next) => {
   try {
-    const token = req.headers.authorization.split(' ')[1];
-    console.log(token);
+    const token = req.headers.authorization.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log(decoded);
     req.user = decoded.payload;
     next();
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
 
-    res.status(401).json({ err: 'Invalid Token' });
+    res.status(401).json({ error: "Invalid Token" });
   }
 };
 

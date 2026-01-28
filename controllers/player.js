@@ -45,7 +45,6 @@ router.get("/invites/:playerId", async (req, res) => {
 
     if (!player) return res.status(404).json({ error: "Player not found" });
 
-    console.log("Player invitations:", player.invitations); // debug log
     res.status(200).json(player.invitations);
   } catch (error) {
     console.log(error);

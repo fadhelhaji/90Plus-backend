@@ -8,7 +8,7 @@ const teamSchema = new Schema({
   players: [
     {
       player_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
-      position: { type: String, required: true },
+      position: { type: String },
     },
   ],
   created_at: { type: Date, default: Date.now },
