@@ -330,5 +330,120 @@ router.post("/:clubId/games/create", async (req, res) => {
   }
 });
 
+router.get("/:clubId/games", async (req, res) => {
+  try {
+    const { clubId } = req.params;
+
+    const club = await Club.findById(clubId);
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    const games = await Game.find({ club_id: clubId })
+      .sort({ match_date: -1 })
+      .populate("team_a_id", "team_name")
+      .populate("team_b_id", "team_name");
+
+    res.status(200).json(games);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Could not fetch games" });
+  }
+});
+
+
+router.get("/:clubId/games/:gameId", async (req, res) => {
+  try {
+    const { clubId, gameId } = req.params;
+
+    const game = await Game.findOne({ _id: gameId, club_id: clubId })
+      .populate({
+        path: "team_a_id",
+        select: "team_name players",
+        populate: { path: "players.player_id", select: "username" },
+      })
+      .populate({
+        path: "team_b_id",
+        select: "team_name players",
+        populate: { path: "players.player_id", select: "username" },
+      })
+      .populate("player_stats.player_id", "username");
+
+    if (!game) return res.status(404).json({ error: "Match not found" });
+
+    res.status(200).json(game);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Could not fetch match" });
+  }
+});
+
+router.put("/:clubId/games/:gameId/score", async (req, res) => {
+  try {
+    const { clubId, gameId } = req.params;
+    const { score_team_a, score_team_b } = req.body;
+
+    const club = await Club.findById(clubId);
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    if (req.user._id.toString() !== club.coach_id.toString()) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    const game = await Game.findOneAndUpdate(
+      { _id: gameId, club_id: clubId },
+      { score_team_a, score_team_b },
+      { new: true }
+    );
+
+    if (!game) return res.status(404).json({ error: "Match not found" });
+
+    res.status(200).json(game);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Could not update score" });
+  }
+});
+
+router.put("/:clubId/games/:gameId/rate/:playerId", async (req, res) => {
+  try {
+    const { clubId, gameId, playerId } = req.params;
+    const { rating, notes } = req.body;
+
+    const club = await Club.findById(clubId);
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    if (req.user._id.toString() !== club.coach_id.toString()) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    const game = await Game.findOne({ _id: gameId, club_id: clubId });
+    if (!game) return res.status(404).json({ error: "Match not found" });
+
+    const idx = game.player_stats.findIndex(
+      (ps) => ps.player_id.toString() === playerId
+    );
+
+    if (idx >= 0) {
+      game.player_stats[idx].rating = rating;
+      if (notes !== undefined) game.player_stats[idx].notes = notes;
+    } else {
+      game.player_stats.push({ player_id: playerId, rating, notes });
+    }
+
+    await game.save();
+
+    const populated = await Game.findById(game._id).populate(
+      "player_stats.player_id",
+      "username"
+    );
+
+    res.status(200).json(populated);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Could not rate player" });
+  }
+});
+
+
+
 
 module.exports = router;

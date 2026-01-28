@@ -12,11 +12,8 @@ const gameSchema = new Schema({
   player_stats: [
     {
       player_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
-      rating: { type: Number, min: 0, max: 100 },
-      pace: { type: Number, min: 0, max: 100 },
-      shooting: { type: Number, min: 0, max: 100 },
-      passing: { type: Number, min: 0, max: 100 },
-      defending: { type: Number, min: 0, max: 100 },
+rating: { type: Number, min: 0, max: 5 },
+
       notes: { type: String },
     },
   ],
