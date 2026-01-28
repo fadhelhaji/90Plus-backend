@@ -17,12 +17,15 @@ rating: { type: Number, min: 0, max: 5 },
       notes: { type: String },
     },
   ],
-  photos: [
-    {
-      url: { type: String, required: true },
-      uploaded_at: { type: Date, default: Date.now },
-    },
-  ],
+photos: [
+  {
+    url: { type: String, required: true },
+    public_id: { type: String },
+    tagged_player_ids: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    uploaded_at: { type: Date, default: Date.now },
+  },
+],
+
   created_at: { type: Date, default: Date.now },
 });
 

@@ -4,6 +4,8 @@ const Club = require("../models/club");
 const Team = require("../models/team");
 const User = require("../models/user");
 const Game = require("../models/game");
+const upload = require("../middlewares/uploadMemory");
+const cloudinary = require("../config/cloudinary");
 
 
 router.post("/create", async (req, res) => {
@@ -442,6 +444,133 @@ router.put("/:clubId/games/:gameId/rate/:playerId", async (req, res) => {
     res.status(500).json({ error: "Could not rate player" });
   }
 });
+
+router.post(
+  "/:clubId/games/:gameId/photos",
+  upload.single("photo"),
+  async (req, res) => {
+    try {
+      const { clubId, gameId } = req.params;
+
+      const club = await Club.findById(clubId);
+      if (!club) return res.status(404).json({ error: "Club not found" });
+
+      if (req.user._id.toString() !== club.coach_id.toString()) {
+        return res.status(403).json({ error: "Not allowed" });
+      }
+
+      const game = await Game.findOne({ _id: gameId, club_id: clubId });
+      if (!game) return res.status(404).json({ error: "Match not found" });
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No photo uploaded" });
+      }
+
+      const b64 = req.file.buffer.toString("base64");
+      const dataUri = `data:${req.file.mimetype};base64,${b64}`;
+
+      const uploaded = await cloudinary.uploader.upload(dataUri, {
+        folder: `clubs/${clubId}/matches/${gameId}`,
+      });
+
+      game.photos.push({
+  url: uploaded.secure_url,
+  public_id: uploaded.public_id,
+  tagged_player_ids: [],
+});
+
+      await game.save();
+
+      const updated = await Game.findById(game._id)
+        .populate("team_a_id", "team_name")
+        .populate("team_b_id", "team_name");
+
+      res.status(200).json(updated);
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ error: "Could not upload photo" });
+    }
+  }
+);
+
+router.delete("/:clubId/games/:gameId/photos/:photoId", async (req, res) => {
+  try {
+    const { clubId, gameId, photoId } = req.params;
+
+    const club = await Club.findById(clubId);
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    if (req.user._id.toString() !== club.coach_id.toString()) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    const game = await Game.findOne({ _id: gameId, club_id: clubId });
+    if (!game) return res.status(404).json({ error: "Match not found" });
+
+    const photo = game.photos.id(photoId);
+    if (!photo) return res.status(404).json({ error: "Photo not found" });
+
+    if (photo.public_id) {
+      try {
+        await cloudinary.uploader.destroy(photo.public_id);
+      } catch (e) {
+        console.log("Cloudinary destroy failed:", e?.message);
+      }
+    }
+
+    photo.deleteOne();
+    await game.save();
+
+    const updated = await Game.findById(game._id)
+      .populate("team_a_id", "team_name")
+      .populate("team_b_id", "team_name")
+      .populate("player_stats.player_id", "username");
+
+    res.status(200).json(updated);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Could not delete photo" });
+  }
+});
+
+router.put("/:clubId/games/:gameId/photos/:photoId/tags", async (req, res) => {
+  try {
+    const { clubId, gameId, photoId } = req.params;
+    const { tagged_player_ids } = req.body;
+
+    const club = await Club.findById(clubId);
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    if (req.user._id.toString() !== club.coach_id.toString()) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    const game = await Game.findOne({ _id: gameId, club_id: clubId });
+    if (!game) return res.status(404).json({ error: "Match not found" });
+
+    const photo = game.photos.id(photoId);
+    if (!photo) return res.status(404).json({ error: "Photo not found" });
+
+    photo.tagged_player_ids = Array.isArray(tagged_player_ids)
+      ? tagged_player_ids
+      : [];
+
+    await game.save();
+
+    const updated = await Game.findById(game._id)
+      .populate("team_a_id", "team_name")
+      .populate("team_b_id", "team_name")
+      .populate("player_stats.player_id", "username");
+
+    res.status(200).json(updated);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Could not update photo tags" });
+  }
+});
+
+
+
 
 
 

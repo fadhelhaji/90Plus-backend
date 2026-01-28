@@ -42,6 +42,7 @@ app.use("/players", playerCtrl);
 app.use(verifyToken);
 app.use("/club", clubCtrl);
 
+
 // SERVER
 app.listen(process.env.PORT, () => {
   console.log(`Express is ready on port ${process.env.PORT || 3000}`);
