@@ -26,7 +26,7 @@ router.post("/create", async (req, res) => {
       coach_id,
     });
     await User.findByIdAndUpdate(coach_id, { club_id: createClub._id });
-
+    console.log(User);
     res.status(201).json(createClub);
   } catch (error) {
     console.error(error);
@@ -119,6 +119,8 @@ router.post("/:clubId/invite/:playerId", async (req, res) => {
 
     const club = await Club.findById(clubId);
     const player = await User.findById(playerId);
+    console.log(club);
+    console.log(player);
 
     if (!club || !player) {
       return res.status(404).json({ error: "Club or Player not found" });
@@ -128,10 +130,17 @@ router.post("/:clubId/invite/:playerId", async (req, res) => {
     }
     const alreadyInvited = club.players.some(
       (p) => p.player_id.toString() === playerId,
+      console.log(club.players),
     );
     if (alreadyInvited) {
       return res.status(400).json({ error: "Player already invited" });
     }
+    await User.findByIdAndUpdate(playerId, { invitations: clubId });
+    // user.push({
+    //   invitations: clubId,
+    // });
+    // await user.save();
+
     club.players.push({
       player_id: playerId,
       status: "invited",
@@ -147,17 +156,20 @@ router.post("/:clubId/accept", async (req, res) => {
   const user = req.user;
   const { clubId } = req.params;
   const club = await Club.findById(clubId);
-
+  // console.log(user._id);
   const playerEntry = club.players.find(
     (p) => p.player_id.toString() === user._id.toString(),
   );
+  console.log(playerEntry);
   if (!playerEntry) {
     return res.status(404).json({ error: "Invitation not found" });
   }
   playerEntry.status = "approved";
   await club.save();
-  user.club_id = clubId;
-  await user.save();
+  await User.findByIdAndUpdate(user._id, { invitations: [] });
+
+  // user.club_id = clubId;
+  // await user.save();
   res.status(200).json({ message: "Joined club successfully" });
 });
 
@@ -168,6 +180,7 @@ router.post("/:clubId/reject", async (req, res) => {
   await Club.findByIdAndUpdate(clubId, {
     $pull: { players: { player_id: user._id } },
   });
+  await User.findByIdAndUpdate(user._id, { invitations: [] });
 
   res.status(200).json({ message: "Invitation rejected" });
 });

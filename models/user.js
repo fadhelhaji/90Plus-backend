@@ -22,6 +22,13 @@ const userSchema = mongoose.Schema({
     ref: "Club",
     default: null,
   },
+  invitations: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Club",
+      default: null,
+    },
+  ],
 });
 
 userSchema.set("toJSON", {

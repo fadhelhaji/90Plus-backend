@@ -34,16 +34,23 @@ router.get("/:id", async (req, res) => {
 router.get("/invites/:playerId", async (req, res) => {
   const { playerId } = req.params;
   try {
-    const player = await User.findById(playerId).populate(
-      "invitations.club_id",
-      "club_name",
-    );
+    const player = await User.findById(playerId).populate({
+      path: "invitations",
+      select: "club_name coach_id",
+      populate: {
+        path: "coach_id",
+        select: "username",
+      },
+    });
+
     if (!player) return res.status(404).json({ error: "Player not found" });
 
+    console.log("Player invitations:", player.invitations); // debug log
     res.status(200).json(player.invitations);
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: "Could not fetch invitations" });
   }
 });
+
 module.exports = router;
