@@ -1,6 +1,6 @@
 # 90Plus Backend ⚽🏟️
 
-This is the backend of **90Plus**, a football club management platform that allows coaches to create and manage clubs, teams, matches, and players, while players can view their club, matches, and invitations.
+This is the backend of **90Plus**, a football club management platform that allows coaches to create and manage clubs, teams, matches, and players, while players can view their invitations.
 
 It is built with **Node.js, Express, MongoDB**, and uses **JWT authentication** with role-based access control.
 
