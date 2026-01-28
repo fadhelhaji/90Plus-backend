@@ -584,4 +584,74 @@ router.put("/:clubId/games/:gameId/photos/:photoId/tags", async (req, res) => {
   }
 });
 
+router.delete("/:clubId", async (req, res) => {
+  const { clubId } = req.params;
+
+  try {
+    const club = await Club.findById(clubId);
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    if (req.user.role !== "Coach") {
+      return res.status(403).json({ error: "Only coaches can delete clubs" });
+    }
+
+    if (club.coach_id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    const gamesDelete = await Game.deleteMany({ club_id: clubId });
+
+    const teamsDelete = await Team.deleteMany({ club_id: clubId });
+
+    await User.updateMany({ club_id: clubId }, { $set: { club_id: null } });
+
+    await User.updateMany(
+      { invitations: clubId },
+      { $set: { invitations: [] } },
+    );
+
+    await User.updateMany(
+      { invitations: { $in: [clubId] } },
+      { $pull: { invitations: clubId } },
+    );
+
+    await Club.findByIdAndDelete(clubId);
+
+    return res.status(200).json({
+      message: "Club deleted successfully",
+      deleted: {
+        games: gamesDelete.deletedCount,
+        teams: teamsDelete.deletedCount,
+        club: 1,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Failed to delete club" });
+  }
+});
+
+router.put("/:id", async (req, res) => {
+  try {
+    const club = await Club.findById(req.params.id);
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    if (req.user.role !== "Coach") {
+      return res.status(403).json({ error: "Only coaches can update clubs" });
+    }
+
+    if (club.coach_id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    club.club_name = req.body.club_name ?? club.club_name;
+    await club.save();
+
+    res.status(200).json(club);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Could not update club" });
+  }
+});
+
 module.exports = router;
