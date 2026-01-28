@@ -74,7 +74,7 @@ It is built with **Node.js, Express, MongoDB**, and uses **JWT authentication** 
 - MONGODB_URI=your_mongodb_connection_string
 - JWT_SECRET=your_jwt_secret
 
-# Cloudinary (for match photos)
+#### Cloudinary (for match photos)
 
 - CLOUDINARY_CLOUD_NAME=your_cloud_name
 - CLOUDINARY_API_KEY=your_api_key
